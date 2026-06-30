@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Processing Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #E63946;    /* Merah */
+            --secondary: #FFC300;  /* Kuning Emas */
+            --bg-color: #F8F9FA;
+            --surface: #FFFFFF;
+            --text-main: #2B2D42;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
+        
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        
+        .dashboard-card { background: var(--surface); width: 100%; max-width: 600px; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; }
+        
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text-main); }
+        p.subtitle { font-size: 14px; color: #6c757d; margin-bottom: 30px; }
+        
+        .upload-area { border: 2px dashed #ccc; border-radius: 12px; padding: 40px 20px; margin-bottom: 24px; cursor: pointer; transition: all 0.3s; position: relative; }
+        .upload-area:hover { border-color: var(--secondary); background: #fffcf0; }
+        .upload-area input[type="file"] { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
+        
+        #file-name { margin-top: 15px; font-weight: 600; font-size: 14px; color: var(--primary); word-wrap: break-word; }
+        
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        
+        button { border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-process { background-color: var(--primary); color: white; box-shadow: 0 4px 15px rgba(230, 57, 70, 0.3); }
+        .btn-process:hover { background-color: #d62828; }
+        .btn-clear { background-color: #f1faee; color: var(--text-main); border: 1px solid #ccc; }
+        .btn-clear:hover { background-color: #e2e8f0; }
+        .btn-download { background-color: var(--secondary); color: var(--text-main); display: none; }
+        .btn-download:hover { background-color: #e5af00; }
+
+        .status { font-size: 14px; font-weight: 600; margin-top: 15px; display: none; word-wrap: break-word;}
+        .loading { color: var(--secondary); }
+        .success { color: #2a9d8f; }
+        .error { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-card">
+        <h1>Data Processing Hub</h1>
+        <p class="subtitle">Unggah file XLSX/CSV Anda untuk diproses ke Google Sheets.</p>
+
+        <div class="upload-area" id="drop-zone">
+            <input type="file" id="file-input" accept=".xlsx, .csv">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #a8a8a8; margin-bottom: 10px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p>Drag & Drop atau Klik untuk memilih file</p>
+            <div id="file-name">Belum ada file yang dipilih</div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-clear" onclick="clearFile()">Hapus File</button>
+            <button class="btn-process" onclick="processFile()">Proses Data</button>
+        </div>
+
+        <div id="status-msg" class="status"></div>
+
+        <div class="btn-group" id="download-section">
+            <button class="btn-download" id="btn-dl-xlsx" onclick="downloadFile('xlsx')">Download XLSX</button>
+            <button class="btn-download" id="btn-dl-csv" onclick="downloadFile('csv')">Download CSV</button>
+        </div>
+    </div>
+
+    <script>
+        // GANTI DENGAN URL WEB APP DARI GOOGLE APPS SCRIPT ANDA
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzAxJTEoA3ERRcXCF2AUZ3xk-Y1m6Jz9Mw8dWlEhMGzD0-VBVWafye5qtgRHqL3IYSW/exec";
+        
+        let globalRawData = null;
+        let processedResultData = null;
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                document.getElementById('file-name').innerText = file.name;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const data = evt.target.result;
+                    const workbook = XLSX.read(data, {type: 'binary'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    // Konversi ke 2D array (termasuk kolom kosong)
+                    globalRawData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {header: 1, defval: ""});
+                };
+                reader.readAsBinaryString(file);
+                hideDownloads();
+            }
+        });
+
+        function clearFile() {
+            document.getElementById('file-input').value = "";
+            document.getElementById('file-name').innerText = "Belum ada file yang dipilih";
+            globalRawData = null;
+            processedResultData = null;
+            document.getElementById('status-msg').style.display = 'none';
+            hideDownloads();
+        }
+
+        function showStatus(msg, type) {
+            const statusEl = document.getElementById('status-msg');
+            statusEl.innerText = msg;
+            statusEl.className = 'status ' + type;
+            statusEl.style.display = 'block';
+        }
+
+        function hideDownloads() {
+            document.getElementById('btn-dl-xlsx').style.display = 'none';
+            document.getElementById('btn-dl-csv').style.display = 'none';
+        }
+
+        async function processFile() {
+            if(!globalRawData) {
+                alert("Silakan unggah file terlebih dahulu.");
+                return;
+            }
+
+            showStatus("Memproses data dan mengirim ke Google Sheet...", "loading");
+            hideDownloads();
+
+            try {
+                // Modifikasi pada request fetch
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        // Menggunakan text/plain agar Apps Script tidak menolak request karena CORS preflight
+                        'Content-Type': 'text/plain;charset=utf-8', 
+                    },
+                    redirect: 'follow', // Wajib untuk mengikuti redirect 302 dari Google Apps Script
+                    body: JSON.stringify(globalRawData)
+                });
+                
+                const result = await response.json();
+                
+                if(result.status === "success") {
+                    showStatus("Data berhasil diproses dan tersimpan di Google Sheet!", "success");
+                    processedResultData = result.data; // Array 2D dari App Script
+                    
+                    // Munculkan tombol download
+                    document.getElementById('btn-dl-xlsx').style.display = 'inline-block';
+                    document.getElementById('btn-dl-csv').style.display = 'inline-block';
+                } else {
+                    showStatus("Gagal memproses data: " + result.message, "error");
+                }
+            } catch (error) {
+                showStatus("Terjadi kesalahan jaringan atau server.", "error");
+                console.error(error);
+            }
+        }
+
+        function downloadFile(format) {
+            if(!processedResultData) return;
+            
+            const ws = XLSX.utils.aoa_to_sheet(processedResultData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Processed_Data");
+            
+            if(format === 'xlsx') {
+                XLSX.writeFile(wb, "Data_Processed.xlsx");
+            } else if (format === 'csv') {
+                XLSX.writeFile(wb, "Data_Processed.csv");
+            }
+        }
+    </script>
+</body>
+</html>

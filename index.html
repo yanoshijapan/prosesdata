@@ -448,8 +448,17 @@
         window.updateStatus = function(wa, newStatus) {
             let user = masterData.find(x => x.wa === wa);
             if(user) {
-                user.status = newStatus; 
                 
+                // LOGIKA TOGGLE / UNDO BARU
+                if (user.status === newStatus) {
+                    // Jika tombol yang diklik adalah status yang sedang aktif, kosongkan statusnya (Undo)
+                    user.status = ""; 
+                } else {
+                    // Jika tombol yang diklik berbeda, ubah ke status yang baru
+                    user.status = newStatus; 
+                }
+                
+                // Render ulang tampilan agar warna tombol langsung berubah
                 if (document.getElementById('modal-title').innerText.includes('Hasil Pencarian')) {
                     executeSearch(lastSearchKeyword); 
                 } else {

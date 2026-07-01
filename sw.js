@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kepulangan-app-v1';
+const CACHE_NAME = 'kepulangan-app-v2';
 const urlsToCache = [
   './',
   './index.html',

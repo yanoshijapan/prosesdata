@@ -1,5 +1,5 @@
 // Ubah nama ini (misal ke v3, v4) setiap kali Anda melakukan perubahan kode di index.html
-const CACHE_NAME = 'kepulangan-app-v2'; 
+const CACHE_NAME = 'kepulangan-app-v3'; 
 const urlsToCache = [
   './',
   './index.html',

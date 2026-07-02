@@ -336,7 +336,10 @@
 
             for (let [month, items] of grouped.entries()) {
                 let fileName = month === "Tanpa Tanggal" ? "sortir kepulangan (tanpa tanggal)" : `sortir kepulangan bulan ${month}`;
-                let isChecked = metaData[`chk_${fileName}`] ? 'checked' : '';
+                
+                // PERBAIKAN LOGIKA BACA CHECKBOX: Memaksa deteksi nilai secara spesifik (Anti-Auto Kapital Google Sheets)
+                let checkState = metaData[`chk_${fileName}`];
+                let isChecked = (checkState === true || String(checkState).toLowerCase() === 'true') ? 'checked' : '';
 
                 container.innerHTML += `
                     <div class="file-item">
@@ -356,7 +359,6 @@
                 `;
             }
         }
-
         function toggleCheck(fileName, state) {
             metaData[`chk_${fileName}`] = state;
             triggerBackgroundSync();
